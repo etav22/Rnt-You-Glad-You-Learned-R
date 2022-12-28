@@ -3,6 +3,11 @@ title: "World Cup EDA"
 output:
   html_document:
     df_print: paged
+knit: (function(input_file, encoding) {
+    out_dir <- '../docs';
+    rmarkdown::render(input_file,
+      encoding=encoding,
+      output_file=file.path(dirname(input_file), out_dir, 'world_cup.html'))})
 ---
 
 # Purpose
@@ -19,6 +24,7 @@ library(tidyverse)
 library(ggplot2)
 library(tidytuesdayR) # library from which we'll retrieve the data
 library(patchwork)
+library(stringr)
 
 # Let's also set a theme for our plots
 theme_set(theme_minimal())
@@ -82,10 +88,12 @@ two columns will help to better characterize the results of the game
 # win_conditions
 wc_matches <- wc_matches %>%
   mutate(penalties = ifelse(str_detect(win_conditions, 'penalties'), 1, 0),
-         aet = ifelse(str_detect(win_conditions, 'AET'), 1, 0))
+         aet = ifelse(!is.na(win_conditions), 1, 0))
 
 # Set all the NA values in the two columns to zero
 wc_matches[c("penalties", "aet")][is.na(wc_matches[c("penalties", "aet")])] <- 0
+
+wc_matches
 ```
 
 ## EDA - World Cup Matches
@@ -173,7 +181,10 @@ graph_results <- function(df, x, y) {
     head(10) %>%
     ggplot() + 
     aes(x=reorder(!!x, -!!y), y=!!y) + 
-    geom_bar(stat='identity') + 
+    geom_bar(
+      stat = 'identity',
+      color = 'black',
+      fill = 'white') + 
     labs(
       x = x,
       y = y
@@ -199,9 +210,13 @@ wc_results$win_pct <- wc_results$wins / wc_results$games
 wc_results %>% 
   head(10) %>%
   ggplot() + 
-  aes(x=reorder(team, -win_pct), y=win_pct) + 
-  geom_bar(stat='identity') + 
+  aes(x = reorder(team, -win_pct), y = win_pct) + 
+  geom_bar(
+    stat = 'identity',
+    color = 'black',
+    fill = 'white') + 
   labs(title = 'Brazil is still at the top!',
+       subtitle = 'Top 10 Countries with Highest Winning Percentage',
        x='Team',
        y='Win Percentage')
 ```
@@ -292,7 +307,7 @@ goal_differential <- goals %>%
   aes(x=differential) + 
   geom_histogram(
     binwidth=5,
-    colour="black",
+    color="black",
     fill="white") + 
   geom_vline(
     xintercept=mean(goals$differential),
@@ -300,8 +315,58 @@ goal_differential <- goals %>%
     color="red") + 
   labs(
     title = "Mostly Normal Distribution and Brazil...",
+    subtitle = "Average (Red Line) Differential is Zero",
     x = "Goal Differential",
     y = "Count")
 
 scored_v_conceded / goal_differential
 ```
+
+### 4. How many matches have required extra time? If so, how many have required
+  penalties?
+  
+Answering this question is a bit tricky. Unfortunately, since we do not know 
+which games were group stage games vs. knock-out games, we cannot get an 
+accurate percentage of extra time games out of the ones that were eligible for
+it (only knockout games can have extra time/penalties).
+
+```{r aet-penalties}
+# Extra time matches
+aet <- wc_matches %>%
+  group_by(aet) %>%
+  summarize(count_aet = n()) %>%
+  arrange(desc(aet)) %>%
+  rename(
+    'Extra Time Required' = aet,
+    'Count' = count_aet
+  )
+
+# Penalty matches
+penalties <- wc_matches %>%
+  group_by(penalties) %>%
+  summarize(count_penalties = n()) %>%
+  arrange(desc(penalties)) %>%
+  rename(
+    'Penalties Required' = penalties,
+    'Count' = count_penalties
+  )
+
+# Percentages
+count_aet <- aet[aet$`Extra Time Required` == 1, ]$Count
+pct_aet <- count_aet / length(wc_matches)
+count_penalties <- penalties[penalties$`Penalties Required` == 1, ]$Count
+pct_penalties <- count_penalties / length(wc_matches)
+
+cat('Percentage of matches requiring Extra Time:', round(pct_aet, 2), '%',
+    '(', count_aet, ')\n')
+cat('Percentage of matches requiring Penalties:', round(pct_penalties, 2), '%',
+    '(', count_penalties, ')')
+```
+
+So in total, less than 5% of games have gone into extra time/penalties. If we 
+could extract the number of games eligible for extra time (knockouts), we could 
+attain a more accurate percentage, but for now this'll do.
+
+### 5. Do scores vary across days of the week?
+
+  
