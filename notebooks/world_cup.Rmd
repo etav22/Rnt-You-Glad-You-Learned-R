@@ -1,5 +1,6 @@
 ---
 title: "World Cup EDA"
+output: rmarkdown::github_document
 ---
 
 # Purpose
