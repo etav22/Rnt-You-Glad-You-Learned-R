@@ -1,0 +1,10 @@
+  name: "R Notebook"
+  output_dir: "docs"
+  navbar:
+    title: "Notebooks"
+    left:
+      - text: "Home"
+        href: index.html
+  output:
+    html_document:
+      theme: cosmo
