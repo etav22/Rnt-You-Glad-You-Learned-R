@@ -213,7 +213,6 @@ guide our analysis:
     wins/losses/draws on a certain day of the week?
 6.  Does being home or away have any impact on the outcome of the game?
 7.  Do we see a difference in the amount of goals scored year to year?
-    Or even day to day?
 
 For now, I think that list of questions should be enough to get us
 started : )
@@ -256,27 +255,13 @@ wc_draws_away <- wc_matches %>%
 
 # We then have to merge the two draws and add the results:
 wc_draws <- inner_join(x = wc_draws_home, y = wc_draws_away)
-```
-
-    ## Joining, by = "team"
-
-``` r
 wc_draws$draws <- wc_draws$draws_away + wc_draws$draws_home
 wc_draws <- wc_draws[c("team", "draws")]
 
 # We can then merge all the objects together
 wc_results <- inner_join(wc_wins, wc_losses)
-```
-
-    ## Joining, by = "team"
-
-``` r
 wc_results <- inner_join(wc_results, wc_draws)
-```
 
-    ## Joining, by = "team"
-
-``` r
 # Then create a final column which adds up all the games played
 wc_results$games <- rowSums(wc_results[c("wins", "losses", "draws")])
 ```
@@ -297,7 +282,7 @@ graph_results <- function(df, x, y) {
     aes(x=reorder(!!x, -!!y), y=!!y) + 
     geom_bar(
       stat = 'identity',
-      color = 'black',
+      color = 'gray',
       fill = 'white') + 
     labs(
       x = x,
@@ -329,7 +314,7 @@ wc_results %>%
   aes(x = reorder(team, -win_pct), y = win_pct) + 
   geom_bar(
     stat = 'identity',
-    color = 'black',
+    color = 'gray',
     fill = 'white') + 
   labs(title = 'Brazil is still at the top!',
        subtitle = 'Top 10 Countries with Highest Winning Percentage',
@@ -457,7 +442,7 @@ goal_differential <- goals %>%
   aes(x=differential) + 
   geom_histogram(
     binwidth=5,
-    color="black",
+    color="gray",
     fill="white") + 
   geom_vline(
     xintercept=mean(goals$differential),
@@ -474,9 +459,7 @@ scored_v_conceded / goal_differential
 
 ![](world_cup_files/figure-gfm/goals-1.png)<!-- -->
 
-### 4. How many matches have required extra time? If so, how many have required
-
-penalties?
+### 4. How many matches have required extra time? If so, how many have required penalties?
 
 Answering this question is a bit tricky. Unfortunately, since we do not
 know which games were group stage games vs. knock-out games, we cannot
@@ -529,3 +512,153 @@ If we could extract the number of games eligible for extra time
 this’ll do.
 
 ### 5. Do scores vary across days of the week?
+
+This is quite a simple question to answer since we can simply group
+together the days of the week and total the number of goals for both
+home and away teams… so let’s do it!
+
+``` r
+# Re-order the days of wek
+wc_matches$dayofweek <- factor(wc_matches$dayofweek, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+
+# Grouping operation to get the total number of goals and games 
+wc_goals_by_day <- wc_matches %>%
+  group_by(dayofweek) %>%
+  summarize(
+    count_games = n(),
+    goals_away = sum(away_score),
+    goals_home = sum(home_score)
+  ) %>%
+  mutate(
+    goals = goals_away + goals_home,
+    goals_per_game = goals / count_games) %>%
+  select(
+    dayofweek,
+    count_games,
+    goals, 
+    goals_per_game
+  )
+
+# Apply and view ordering
+wc_goals_by_day <- wc_goals_by_day[order(wc_goals_by_day$dayofweek), ]
+wc_goals_by_day
+```
+
+    ## # A tibble: 7 × 4
+    ##   dayofweek count_games goals goals_per_game
+    ##   <fct>           <int> <dbl>          <dbl>
+    ## 1 Monday             82   209           2.55
+    ## 2 Tuesday           119   321           2.70
+    ## 3 Wednesday         148   417           2.82
+    ## 4 Thursday          111   289           2.60
+    ## 5 Friday             92   214           2.33
+    ## 6 Saturday          152   426           2.80
+    ## 7 Sunday            196   672           3.43
+
+From the grouped table above, we cna see that `Sunday` is the best day
+if you want to see a high-scoring match. Let’s visualize this data as
+well without having to group this data.
+
+``` r
+wc_matches %>%
+  mutate(
+    total_goals = away_score + home_score
+  ) %>%
+  ggplot() +
+  aes(x=dayofweek, y=total_goals) + 
+  geom_boxplot() + 
+  labs(
+    title = "Weekends have the most action!",
+    x = "Day of Week",
+    y = "Goals"
+  )
+```
+
+![](world_cup_files/figure-gfm/goals-boxplot-1.png)<!-- -->
+
+If you want to see a high-scoring game, you are most likely to see that
+on the weekend. However, the next best option seems to be hump day!
+
+### 6. Does being home or away have any impact on the outcome of the game?
+
+This again, is quite a simple operation that we can accomplish with a
+quick grouping operation:
+
+``` r
+wc_matches %>%
+  group_by(outcome) %>%
+  summarize(wins = n())
+```
+
+    ## # A tibble: 3 × 2
+    ##   outcome  wins
+    ##   <chr>   <int>
+    ## 1 A         302
+    ## 2 D         169
+    ## 3 H         429
+
+So, there is a slight home-field advantage, but again nothing
+significant here. Again, `home` and `away` really doesn’t have much
+significance in the world cup since you are typically not playing at
+your real `home`.
+
+### 7. Do we see a difference in the amount of goals scored year to year?
+
+This is quite a fun statistic. What world cup was the highest scoring
+one and which one had the highest goals per game?
+
+``` r
+wc_goals_by_year <-wc_matches %>%
+  group_by(year) %>%
+  summarize(
+    games = n(),
+    goals_away = sum(away_score),
+    goals_home = sum(home_score)
+  ) %>%
+  mutate(
+    goals = goals_away + goals_home,
+    goals_per_game = goals / games
+  ) %>%
+  select(
+    year,
+    games,
+    goals,
+    goals_per_game
+  )
+
+goals_games_by_year <- wc_goals_by_year %>%
+  ggplot(aes(year)) + 
+  geom_line(aes(y = goals, colour = "Goals")) + 
+  geom_point(aes(y = goals, colour = "Goals")) + 
+  geom_line(aes(y = games, colour = "Games")) + 
+  geom_point(aes(y = games, colour = "Games")) + 
+  labs(
+    title = "A lot fewer games were played in the past",
+    x = "Year",
+    y = "Goals"
+  )
+
+goals_per_game_by_year <- wc_goals_by_year %>%
+  ggplot() + 
+  aes(x = year, y = goals_per_game) + 
+  geom_bar(
+    stat = "identity",
+    fill = "white",
+    color = "gray"
+  ) + 
+  labs(
+    title = "1954 was a goal bonanza!",
+    x = "Year",
+    y = "Goals Per Year"
+  )
+
+goals_games_by_year / goals_per_game_by_year
+```
+
+![](world_cup_files/figure-gfm/goals-per-year-1.png)<!-- -->
+
+The most notable feature from above is the huge amount of goals that
+were scored in the 1954 world cup. An average of roughly 5 goals were
+scored a game! Obviously, we have to consider that there were much fewer
+matches played but one cannot deny that it was definitely a world cup
+worth watching!
