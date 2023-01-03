@@ -30,6 +30,7 @@ wc_matches <- world_cup$wcmatches
 wc_cups <- world_cup$worldcups
 ```
 
+---
 ## Data Review
 Let's now take a quick look at both dataframes and see if they match expectations
 ```{r quick-view}
@@ -89,6 +90,7 @@ wc_matches[c("penalties", "aet")][is.na(wc_matches[c("penalties", "aet")])] <- 0
 wc_matches
 ```
 
+---
 ## EDA - World Cup Matches
 Seeing as we've done most of the work on the `wc_matches` dataframe, we'll 
 take a first swing at further investigating this data.
@@ -467,4 +469,73 @@ goals_per_game_by_year <- wc_goals_by_year %>%
 goals_games_by_year / goals_per_game_by_year
 ```
 
-The most notable feature from above is the huge amount of goals that were scored in the 1954 world cup. An average of roughly 5 goals were scored a game! Obviously, we have to consider that there were much fewer matches played but one cannot deny that it was definitely a world cup worth watching!
+The most notable feature from above is the huge amount of goals that were scored 
+in the 1954 world cup. An average of roughly 5 goals were scored a game! 
+Obviously, we have to consider that there were much fewer matches played but one 
+cannot deny that it was definitely a world cup worth watching!
+
+---
+## EDA - World Cup Cups
+Having now completed the EDA for the `wc_matches` data, let's move onto to 
+the `wc_cups` data. 
+
+From this data, there are a three questions I'd like to answer:
+
+  1. Who has placed the best over all the world cups? Are there any surprise
+countries that have cropped up throughout the years?
+  2. Does hosting the world cup give you a better chance of achieving a higher
+placement?
+  3. How has the attendance grown as the popularity of the cup increased?
+    - Along similar vein, how has the number of teams and games grown?
+    
+### 1. Who has had the best overall placement in the world cup?
+To answer this question, we will need to group all the countries together by
+the four different columns that represent placement (`winner, second, third,` 
+`fourth`) and count the occurrences of each country:
+```{r placement, message=FALSE}
+# Subset the data
+wc_cups_placements <- wc_cups[c("winner", "second", "third", "fourth")]
+
+# Create an empty list to house the grouped data
+cups_list <- list()
+
+# Loop through and group by the different columns
+for (i in colnames(wc_cups_placements)) {
+  # Group the data
+  grouped_data <- wc_cups_placements %>%
+    group_by(wc_cups_placements[i]) %>%
+    summarize(count = n())
+  
+  cups_list[[i]] <- grouped_data
+}
+
+# Now we need to join all the dataframes together. In this case, we have to use
+# a full_join since some of the countries may exist in one but not in the other
+first_join <- full_join(
+  x = as.data.frame(cups_list["winner"]), 
+  y = as.data.frame(cups_list["second"]), 
+  by = c("winner.winner" = "second.second"),
+)
+
+second_join <- full_join(
+  x = first_join, 
+  y = as.data.frame(cups_list["third"]), 
+  by = c("winner.winner" = "third.third"),
+)
+
+placements <- full_join(
+  x = second_join, 
+  y = as.data.frame(cups_list["fourth"]), 
+  by = c("winner.winner" = "fourth.fourth"),
+)
+
+# Rename all the columns
+placements <- rename(
+  placements, 
+  first = winner.count, 
+  second = second.count,
+  third = third.count,
+  fourth = fourth.count)
+
+placements
+```
