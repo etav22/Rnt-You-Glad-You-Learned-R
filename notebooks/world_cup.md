@@ -43,6 +43,8 @@ wc_matches <- world_cup$wcmatches
 wc_cups <- world_cup$worldcups
 ```
 
+------------------------------------------------------------------------
+
 ## Data Review
 
 Let’s now take a quick look at both dataframes and see if they match
@@ -193,6 +195,8 @@ wc_matches
     ## #   penalties <dbl>, aet <dbl>, and abbreviated variable names ¹​home_team,
     ## #   ²​away_team, ³​home_score, ⁴​away_score, ⁵​win_conditions
 
+------------------------------------------------------------------------
+
 ## EDA - World Cup Matches
 
 Seeing as we’ve done most of the work on the `wc_matches` dataframe,
@@ -201,18 +205,19 @@ we’ll take a first swing at further investigating this data.
 However, before we begin, let’s ask some questions that will help to
 guide our analysis:
 
-1.  Who is the winningest/losingest/drawingest (not sure if that’s a
-    word) team? - Review both raw wins and win %
-2.  What team has played the most games in the WC? Is that associated
-    with the having more wins? One would think yes
-3.  What team has scored the most goals and has had the most goals
-    scored against them?
-4.  How many matches have required extra time? If so, how many have
-    required penalties?
-5.  Do scores vary across dates? Meaning do we see more
-    wins/losses/draws on a certain day of the week?
-6.  Does being home or away have any impact on the outcome of the game?
-7.  Do we see a difference in the amount of goals scored year to year?
+    1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
+    team?
+      - Review both raw wins and win %
+    2. What team has played the most games in the WC? Is that associated with
+    the having more wins? One would think yes
+    3. What team has scored the most goals and has had the most goals scored 
+    against them?
+    4. How many matches have required extra time? If so, how many have required
+    penalties?
+    5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of
+    the week?
+    6. Does being home or away have any impact on the outcome of the game?
+    7. Do we see a difference in the amount of goals scored year to year? 
 
 For now, I think that list of questions should be enough to get us
 started : )
@@ -662,3 +667,101 @@ were scored in the 1954 world cup. An average of roughly 5 goals were
 scored a game! Obviously, we have to consider that there were much fewer
 matches played but one cannot deny that it was definitely a world cup
 worth watching!
+
+------------------------------------------------------------------------
+
+## EDA - World Cup Cups
+
+Having now completed the EDA for the `wc_matches` data, let’s move onto
+to the `wc_cups` data.
+
+From this data, there are a three questions I’d like to answer:
+
+    1. Who has placed the best over all the world cups? Are there any surprise
+    countries that have cropped up throughout the years?
+    2. Does hosting the world cup give you a better chance of achieving a higher
+    placement?
+    3. How has the attendance grown as the popularity of the cup increased?
+      - Along similar vein, how has the number of teams and games grown?
+
+### 1. Who has had the best overall placement in the world cup?
+
+To answer this question, we will need to group all the countries
+together by the four different columns that represent placement
+(`winner, second, third,` `fourth`) and count the occurrences of each
+country:
+
+``` r
+# Subset the data
+wc_cups_placements <- wc_cups[c("winner", "second", "third", "fourth")]
+
+# Create an empty list to house the grouped data
+cups_list <- list()
+
+# Loop through and group by the different columns
+for (i in colnames(wc_cups_placements)) {
+  # Group the data
+  grouped_data <- wc_cups_placements %>%
+    group_by(wc_cups_placements[i]) %>%
+    summarize(count = n())
+  
+  cups_list[[i]] <- grouped_data
+}
+
+# Now we need to join all the dataframes together. In this case, we have to use
+# a full_join since some of the countries may exist in one but not in the other
+first_join <- full_join(
+  x = as.data.frame(cups_list["winner"]), 
+  y = as.data.frame(cups_list["second"]), 
+  by = c("winner.winner" = "second.second"),
+)
+
+second_join <- full_join(
+  x = first_join, 
+  y = as.data.frame(cups_list["third"]), 
+  by = c("winner.winner" = "third.third"),
+)
+
+placements <- full_join(
+  x = second_join, 
+  y = as.data.frame(cups_list["fourth"]), 
+  by = c("winner.winner" = "fourth.fourth"),
+)
+
+# Rename all the columns
+placements <- rename(
+  placements, 
+  first = winner.count, 
+  second = second.count,
+  third = third.count,
+  fourth = fourth.count)
+
+placements
+```
+
+    ##     winner.winner first second third fourth
+    ## 1       Argentina     2      3    NA     NA
+    ## 2          Brazil     5      2     2      2
+    ## 3         England     1     NA    NA      2
+    ## 4          France     2      1     2      1
+    ## 5         Germany     1      1     3     NA
+    ## 6           Italy     4      2     1      1
+    ## 7           Spain     1     NA    NA      1
+    ## 8         Uruguay     2     NA    NA      3
+    ## 9    West Germany     3      3     1      1
+    ## 10        Croatia    NA      1     1     NA
+    ## 11 Czechoslovakia    NA      2    NA     NA
+    ## 12        Hungary    NA      2    NA     NA
+    ## 13    Netherlands    NA      3     1      1
+    ## 14         Sweden    NA      1     2      1
+    ## 15        Austria    NA     NA     1      1
+    ## 16        Belgium    NA     NA     1      1
+    ## 17          Chile    NA     NA     1     NA
+    ## 18         Poland    NA     NA     2     NA
+    ## 19       Portugal    NA     NA     1      1
+    ## 20         Turkey    NA     NA     1     NA
+    ## 21            USA    NA     NA     1     NA
+    ## 22       Bulgaria    NA     NA    NA      1
+    ## 23    South Korea    NA     NA    NA      1
+    ## 24   Soviet Union    NA     NA    NA      1
+    ## 25     Yugoslavia    NA     NA    NA      2

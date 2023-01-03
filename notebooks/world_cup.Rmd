@@ -2,13 +2,13 @@
 title: "World Cup EDA"
 output: rmarkdown::github_document
 ---
-
 # Purpose
 To deeper my understanding of R I want to try my hand at exploring different data sets in which I can apply my newly learned skills.
 
 For this notebook, I'll look at the [FIFA world cup dataset](https://github.com/rfordatascience/tidytuesday/tree/master/data/2022/2022-11-29) ⚽️ from the Tidy Tuesdays
 
 ---
+
 ## Prep
 
 First, let's load the libraries and data:
@@ -31,6 +31,7 @@ wc_cups <- world_cup$worldcups
 ```
 
 ---
+
 ## Data Review
 Let's now take a quick look at both dataframes and see if they match expectations
 ```{r quick-view}
@@ -91,6 +92,7 @@ wc_matches
 ```
 
 ---
+
 ## EDA - World Cup Matches
 Seeing as we've done most of the work on the `wc_matches` dataframe, we'll 
 take a first swing at further investigating this data.
@@ -98,18 +100,19 @@ take a first swing at further investigating this data.
 However, before we begin, let's ask some questions that will help to guide our
 analysis:
 
-  1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
-  team?
-    - Review both raw wins and win %
-  2. What team has played the most games in the WC? Is that associated with
-  the having more wins? One would think yes
-  3. What team has scored the most goals and has had the most goals scored 
-  against them?
-  4. How many matches have required extra time? If so, how many have required
-  penalties?
-  5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of the week?
-  6. Does being home or away have any impact on the outcome of the game?
-  7. Do we see a difference in the amount of goals scored year to year? 
+    1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
+    team?
+      - Review both raw wins and win %
+    2. What team has played the most games in the WC? Is that associated with
+    the having more wins? One would think yes
+    3. What team has scored the most goals and has had the most goals scored 
+    against them?
+    4. How many matches have required extra time? If so, how many have required
+    penalties?
+    5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of
+    the week?
+    6. Does being home or away have any impact on the outcome of the game?
+    7. Do we see a difference in the amount of goals scored year to year? 
   
 For now, I think that list of questions should be enough to get us started : )
 
@@ -475,18 +478,19 @@ Obviously, we have to consider that there were much fewer matches played but one
 cannot deny that it was definitely a world cup worth watching!
 
 ---
+
 ## EDA - World Cup Cups
 Having now completed the EDA for the `wc_matches` data, let's move onto to 
 the `wc_cups` data. 
 
 From this data, there are a three questions I'd like to answer:
 
-  1. Who has placed the best over all the world cups? Are there any surprise
-countries that have cropped up throughout the years?
-  2. Does hosting the world cup give you a better chance of achieving a higher
-placement?
-  3. How has the attendance grown as the popularity of the cup increased?
-    - Along similar vein, how has the number of teams and games grown?
+    1. Who has placed the best over all the world cups? Are there any surprise
+    countries that have cropped up throughout the years?
+    2. Does hosting the world cup give you a better chance of achieving a higher
+    placement?
+    3. How has the attendance grown as the popularity of the cup increased?
+      - Along similar vein, how has the number of teams and games grown?
     
 ### 1. Who has had the best overall placement in the world cup?
 To answer this question, we will need to group all the countries together by
