@@ -1,6 +1,14 @@
 World Cup EDA
 ================
 
+- <a href="#purpose" id="toc-purpose">Purpose</a>
+  - <a href="#prep" id="toc-prep">Prep</a>
+  - <a href="#data-review" id="toc-data-review">Data Review</a>
+  - <a href="#eda-world-cup-matches"
+    id="toc-eda-world-cup-matches">EDA-World Cup Matches</a>
+  - <a href="#eda-world-cups" id="toc-eda-world-cups">EDA-World Cups</a>
+  - <a href="#conclusion" id="toc-conclusion">Conclusion</a>
+
 # Purpose
 
 To deeper my understanding of R I want to try my hand at exploring
@@ -197,7 +205,7 @@ wc_matches
 
 ------------------------------------------------------------------------
 
-## EDA - World Cup Matches
+## EDA-World Cup Matches
 
 Seeing as we’ve done most of the work on the `wc_matches` dataframe,
 we’ll take a first swing at further investigating this data.
@@ -205,19 +213,18 @@ we’ll take a first swing at further investigating this data.
 However, before we begin, let’s ask some questions that will help to
 guide our analysis:
 
-    1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
-    team?
-      - Review both raw wins and win %
-    2. What team has played the most games in the WC? Is that associated with
-    the having more wins? One would think yes
-    3. What team has scored the most goals and has had the most goals scored 
-    against them?
-    4. How many matches have required extra time? If so, how many have required
-    penalties?
-    5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of
-    the week?
-    6. Does being home or away have any impact on the outcome of the game?
-    7. Do we see a difference in the amount of goals scored year to year? 
+1.  Who is the winningest/losingest/drawingest (not sure if that’s a
+    word) team? Review both raw wins and win %
+2.  What team has played the most games in the WC? Is that associated
+    with the having more wins? One would think yes
+3.  What team has scored the most goals and has had the most goals
+    scored against them?
+4.  How many matches have required extra time? If so, how many have
+    required penalties?
+5.  Do scores vary across dates? Meaning do we see more
+    wins/losses/draws on a certain day of the week?
+6.  Does being home or away have any impact on the outcome of the game?
+7.  Do we see a difference in the amount of goals scored year to year?
 
 For now, I think that list of questions should be enough to get us
 started : )
@@ -400,31 +407,16 @@ goals_away_con <- wc_goals_fx(wc_matches, away_team, home_score)
 
 # Goals Scored
 goals_scored <- inner_join(goals_home_sco, goals_away_sco)
-```
-
-    ## Joining, by = "team"
-
-``` r
 goals_scored$total_goals_scored <- goals_scored$`sum(home_score)` + goals_scored$`sum(away_score)`
 goals_scored <- goals_scored[c('team', 'total_goals_scored')]
 
 # Goals Conceded
 goals_conceded <- inner_join(goals_home_con, goals_away_con)
-```
-
-    ## Joining, by = "team"
-
-``` r
 goals_conceded$total_goals_conceded <- goals_conceded$`sum(home_score)` + goals_conceded$`sum(away_score)`
 goals_conceded <- goals_conceded[c('team', 'total_goals_conceded')]
 
 # Join the two and clean up the dataframe
 goals <- inner_join(x = goals_scored, y = goals_conceded)
-```
-
-    ## Joining, by = "team"
-
-``` r
 goals$differential <- goals$total_goals_scored - goals$total_goals_conceded
 goals <- rename(
   goals, 
@@ -613,6 +605,7 @@ This is quite a fun statistic. What world cup was the highest scoring
 one and which one had the highest goals per game?
 
 ``` r
+# Create the group structure by year
 wc_goals_by_year <-wc_matches %>%
   group_by(year) %>%
   summarize(
@@ -631,7 +624,8 @@ wc_goals_by_year <-wc_matches %>%
     goals_per_game
   )
 
-goals_games_by_year <- wc_goals_by_year %>%
+# Develop the goals and games line plot
+plot_goals_games_by_year <- wc_goals_by_year %>%
   ggplot(aes(year)) + 
   geom_line(aes(y = goals, colour = "Goals")) + 
   geom_point(aes(y = goals, colour = "Goals")) + 
@@ -643,7 +637,8 @@ goals_games_by_year <- wc_goals_by_year %>%
     y = "Goals"
   )
 
-goals_per_game_by_year <- wc_goals_by_year %>%
+# Develop the goals/game line plot
+plot_goals_per_game_by_year <- wc_goals_by_year %>%
   ggplot() + 
   aes(x = year, y = goals_per_game) + 
   geom_bar(
@@ -657,7 +652,7 @@ goals_per_game_by_year <- wc_goals_by_year %>%
     y = "Goals Per Year"
   )
 
-goals_games_by_year / goals_per_game_by_year
+plot_goals_games_by_year / plot_goals_per_game_by_year
 ```
 
 ![](world_cup_files/figure-gfm/goals-per-year-1.png)<!-- -->
@@ -670,19 +665,19 @@ worth watching!
 
 ------------------------------------------------------------------------
 
-## EDA - World Cup Cups
+## EDA-World Cups
 
 Having now completed the EDA for the `wc_matches` data, let’s move onto
 to the `wc_cups` data.
 
 From this data, there are a three questions I’d like to answer:
 
-    1. Who has placed the best over all the world cups? Are there any surprise
-    countries that have cropped up throughout the years?
-    2. Does hosting the world cup give you a better chance of achieving a higher
-    placement?
-    3. How has the attendance grown as the popularity of the cup increased?
-      - Along similar vein, how has the number of teams and games grown?
+1.  Who has placed the best over all the world cups? Are there any
+    surprise countries that have cropped up throughout the years?
+2.  Does hosting the world cup give you a better chance of achieving a
+    higher placement?
+3.  How has the attendance grown as the popularity of the cup increased?
+    Along similar vein, how has the number of teams and games grown?
 
 ### 1. Who has had the best overall placement in the world cup?
 
@@ -731,37 +726,208 @@ placements <- full_join(
 # Rename all the columns
 placements <- rename(
   placements, 
+  team = winner.winner,
   first = winner.count, 
   second = second.count,
   third = third.count,
   fourth = fourth.count)
 
+# Set all NA values to 0
+placements[is.na(placements)] <- 0
+
+# Now let's tally the number of total placements for each team
+placements$total_placements <- rowSums(placements[,c("first", 
+                                                     "second", 
+                                                     "third", 
+                                                     "fourth")])
+
+# Organize the placements by WC wins
+placements <- arrange(placements, desc(first))
+
 placements
 ```
 
-    ##     winner.winner first second third fourth
-    ## 1       Argentina     2      3    NA     NA
-    ## 2          Brazil     5      2     2      2
-    ## 3         England     1     NA    NA      2
-    ## 4          France     2      1     2      1
-    ## 5         Germany     1      1     3     NA
-    ## 6           Italy     4      2     1      1
-    ## 7           Spain     1     NA    NA      1
-    ## 8         Uruguay     2     NA    NA      3
-    ## 9    West Germany     3      3     1      1
-    ## 10        Croatia    NA      1     1     NA
-    ## 11 Czechoslovakia    NA      2    NA     NA
-    ## 12        Hungary    NA      2    NA     NA
-    ## 13    Netherlands    NA      3     1      1
-    ## 14         Sweden    NA      1     2      1
-    ## 15        Austria    NA     NA     1      1
-    ## 16        Belgium    NA     NA     1      1
-    ## 17          Chile    NA     NA     1     NA
-    ## 18         Poland    NA     NA     2     NA
-    ## 19       Portugal    NA     NA     1      1
-    ## 20         Turkey    NA     NA     1     NA
-    ## 21            USA    NA     NA     1     NA
-    ## 22       Bulgaria    NA     NA    NA      1
-    ## 23    South Korea    NA     NA    NA      1
-    ## 24   Soviet Union    NA     NA    NA      1
-    ## 25     Yugoslavia    NA     NA    NA      2
+    ##              team first second third fourth total_placements
+    ## 1          Brazil     5      2     2      2               11
+    ## 2           Italy     4      2     1      1                8
+    ## 3    West Germany     3      3     1      1                8
+    ## 4       Argentina     2      3     0      0                5
+    ## 5          France     2      1     2      1                6
+    ## 6         Uruguay     2      0     0      3                5
+    ## 7         England     1      0     0      2                3
+    ## 8         Germany     1      1     3      0                5
+    ## 9           Spain     1      0     0      1                2
+    ## 10        Croatia     0      1     1      0                2
+    ## 11 Czechoslovakia     0      2     0      0                2
+    ## 12        Hungary     0      2     0      0                2
+    ## 13    Netherlands     0      3     1      1                5
+    ## 14         Sweden     0      1     2      1                4
+    ## 15        Austria     0      0     1      1                2
+    ## 16        Belgium     0      0     1      1                2
+    ## 17          Chile     0      0     1      0                1
+    ## 18         Poland     0      0     2      0                2
+    ## 19       Portugal     0      0     1      1                2
+    ## 20         Turkey     0      0     1      0                1
+    ## 21            USA     0      0     1      0                1
+    ## 22       Bulgaria     0      0     0      1                1
+    ## 23    South Korea     0      0     0      1                1
+    ## 24   Soviet Union     0      0     0      1                1
+    ## 25     Yugoslavia     0      0     0      2                2
+
+It’s crazy to think that all world cup wins are comprised from only nine
+teams!
+
+With the placements table generated, let’s visualize the all total
+placements:
+
+``` r
+placements %>% 
+  ggplot() + 
+  aes(x = total_placements , y = reorder(team, +total_placements)) + 
+  geom_bar(
+    stat = 'identity',
+    color = 'gray',
+    fill = 'white') + 
+  scale_x_continuous(breaks = round(seq(min(placements$total_placements), 
+                                        max(placements$total_placements), 
+                                        by = 1),1)) +
+  labs(title = 'Brazil remains at the top!',
+       subtitle = 'Brazil has both the most WC wins (5) and placements (11)',
+       x='Total Placements',
+       y='Team')
+```
+
+![](world_cup_files/figure-gfm/placements-graph-1.png)<!-- -->
+
+So while there’s no surprise that Brazil is at the top, there are a
+couple of surprise teams (mainly those outside of South America and
+Europe) that have achieved placements such as the Soviet Union, South
+Korea.
+
+### 2. Does hosting the world cup give you a better chance of achieving a higher
+
+    placement?
+
+To answer this question, we’ll have to take a look at the each of the
+hosts in the `host` column and see if they are also present in any of
+the placement columns (`winner`, `second`, `third`, `fourth`).
+
+``` r
+# Subset the data
+wc_cups_placements <- wc_cups[c("winner", "second", "third", "fourth")]
+
+# Create an empty list to house the results
+host_placements <- list()
+
+# Loop through and group by the different columns
+for (i in colnames(wc_cups_placements)) {
+  
+  host_placements[[i]] <- sum(wc_cups$host == wc_cups_placements[[i]])
+}
+
+# Print out the results
+cat('Host Winners:', host_placements[[1]],'\n',
+    'Host Runner-Ups:', host_placements[[2]],'\n',
+    'Host Third-Place:', host_placements[[3]],'\n',
+    'Host Fourth-Place:', host_placements[[4]])
+```
+
+    ## Host Winners: 5 
+    ##  Host Runner-Ups: 2 
+    ##  Host Third-Place: 3 
+    ##  Host Fourth-Place: 1
+
+So in 11 of 21 world cups played, the hosts have at least made it to at
+least fourth place! I also have to make a concession here, in 1974, the
+world cup was hosted in Germany, but West Germany won the world cup, so
+if we consider them equal, the number goes up to 12 of 21 or about 57%
+of the time. Seems like being a pays off.
+
+While this is not a part of the question, I am curious who has hosted
+the most world cups?
+
+``` r
+wc_cups %>%
+  group_by(host) %>%
+  summarize(hosted = n()) %>%
+  arrange(desc(hosted))
+```
+
+    ## # A tibble: 16 × 2
+    ##    host               hosted
+    ##    <chr>               <int>
+    ##  1 Brazil                  2
+    ##  2 France                  2
+    ##  3 Germany                 2
+    ##  4 Italy                   2
+    ##  5 Mexico                  2
+    ##  6 Argentina               1
+    ##  7 Chile                   1
+    ##  8 England                 1
+    ##  9 Japan, South Korea      1
+    ## 10 Russia                  1
+    ## 11 South Africa            1
+    ## 12 Spain                   1
+    ## 13 Sweden                  1
+    ## 14 Switzerland             1
+    ## 15 Uruguay                 1
+    ## 16 USA                     1
+
+Brazil, France, Germany, Italy and my homeland of Mexico are all tied
+with 2 (but in 2026, Mexico will have technically hosted the most world
+cups - even though it’s a joint host with US and Canada😊)!
+
+### 3. How has the attendance grown as the popularity of the cup increased? Along a
+
+similar vein, how has the number of teams and games grown? To answer
+this question, we’ll look at the `attendance` and `teams` columns.
+However, rather than looking at raw attendance, I want to look at the
+attendance per game to account for the increase of games over time. We
+can answer this question in a straightforward manner by using a line
+chart.
+
+``` r
+wc_cups$attendance_per_game <- wc_cups$attendance / wc_cups$games
+
+plot_attendance_per_game <- wc_cups %>%
+  ggplot(aes(year)) + 
+  geom_line(aes(y = attendance_per_game)) + 
+  geom_point(aes(y = attendance_per_game)) + 
+  scale_x_continuous(breaks = round(seq(min(wc_cups$year), 
+                                        max(wc_cups$year), 
+                                        by = 8),1)) +
+  labs(
+    title = "1994 had the Best Crowds!",
+    x = "",
+    y = "Attendance Per Game"
+  )
+
+plot_teams_per_year <- wc_cups %>%
+  ggplot(aes(year)) + 
+  geom_line(aes(y = teams)) + 
+  geom_point(aes(y = teams)) + 
+  scale_x_continuous(breaks = round(seq(min(wc_cups$year), 
+                                        max(wc_cups$year), 
+                                        by = 8),1)) +
+  labs(
+    title = "World Cups Used to be Quite Exclusive",
+    subtitle = "From 13 to 32 teams in 88 years!",
+    x = "Year",
+    y = "Number of Teams"
+  )
+  
+plot_attendance_per_game / plot_teams_per_year
+```
+
+![](world_cup_files/figure-gfm/attendance-teams-over-time-1.png)<!-- -->
+For reference the world cup in 1994 which had the highest attendance was
+the one in the US 🦅!
+
+## Conclusion
+
+Having looked at both datasets and learned some fun facts, I’m going to
+wrap up this EDA. Again, these are meant to be practice notebooks where
+I test some of my R-skills and learn some new ones. While the depth of
+the analysis should not be merely surface level, it’s also not too
+intensive. I had a lot of fun going through this dataset and I’m excited
+for the next one!

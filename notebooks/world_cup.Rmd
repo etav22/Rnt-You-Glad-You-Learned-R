@@ -1,6 +1,9 @@
 ---
 title: "World Cup EDA"
-output: rmarkdown::github_document
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
 ---
 # Purpose
 To deeper my understanding of R I want to try my hand at exploring different data sets in which I can apply my newly learned skills.
@@ -93,26 +96,25 @@ wc_matches
 
 ---
 
-## EDA - World Cup Matches
+## EDA-World Cup Matches
 Seeing as we've done most of the work on the `wc_matches` dataframe, we'll 
 take a first swing at further investigating this data.
 
 However, before we begin, let's ask some questions that will help to guide our
 analysis:
 
-    1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
-    team?
-      - Review both raw wins and win %
-    2. What team has played the most games in the WC? Is that associated with
-    the having more wins? One would think yes
-    3. What team has scored the most goals and has had the most goals scored 
-    against them?
-    4. How many matches have required extra time? If so, how many have required
-    penalties?
-    5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of
-    the week?
-    6. Does being home or away have any impact on the outcome of the game?
-    7. Do we see a difference in the amount of goals scored year to year? 
+  1. Who is the winningest/losingest/drawingest (not sure if that's a word) 
+  team? Review both raw wins and win %
+  2. What team has played the most games in the WC? Is that associated with
+  the having more wins? One would think yes
+  3. What team has scored the most goals and has had the most goals scored 
+  against them?
+  4. How many matches have required extra time? If so, how many have required
+  penalties?
+  5. Do scores vary across dates? Meaning do we see more wins/losses/draws on a certain day of
+  the week?
+  6. Does being home or away have any impact on the outcome of the game?
+  7. Do we see a difference in the amount of goals scored year to year? 
   
 For now, I think that list of questions should be enough to get us started : )
 
@@ -249,7 +251,7 @@ the more games they've won. This makes sense as if you get pass the group stages
 of the world cup, you will get to play more games as you win.
 
 ### 3. What team has scored the most goals? 
-```{r goals}
+```{r goals, message=FALSE}
 # Function to group the teams by home/away and home/away goals
 wc_goals_fx <- function(df, group, col){
   group = enquo(arg = group)
@@ -425,6 +427,7 @@ So, there is a slight home-field advantage, but again nothing significant here. 
 
 This is quite a fun statistic. What world cup was the highest scoring one and which one had the highest goals per game?
 ```{r goals-per-year}
+# Create the group structure by year
 wc_goals_by_year <-wc_matches %>%
   group_by(year) %>%
   summarize(
@@ -443,7 +446,8 @@ wc_goals_by_year <-wc_matches %>%
     goals_per_game
   )
 
-goals_games_by_year <- wc_goals_by_year %>%
+# Develop the goals and games line plot
+plot_goals_games_by_year <- wc_goals_by_year %>%
   ggplot(aes(year)) + 
   geom_line(aes(y = goals, colour = "Goals")) + 
   geom_point(aes(y = goals, colour = "Goals")) + 
@@ -455,7 +459,8 @@ goals_games_by_year <- wc_goals_by_year %>%
     y = "Goals"
   )
 
-goals_per_game_by_year <- wc_goals_by_year %>%
+# Develop the goals/game line plot
+plot_goals_per_game_by_year <- wc_goals_by_year %>%
   ggplot() + 
   aes(x = year, y = goals_per_game) + 
   geom_bar(
@@ -469,7 +474,7 @@ goals_per_game_by_year <- wc_goals_by_year %>%
     y = "Goals Per Year"
   )
 
-goals_games_by_year / goals_per_game_by_year
+plot_goals_games_by_year / plot_goals_per_game_by_year
 ```
 
 The most notable feature from above is the huge amount of goals that were scored 
@@ -479,18 +484,18 @@ cannot deny that it was definitely a world cup worth watching!
 
 ---
 
-## EDA - World Cup Cups
+## EDA-World Cups
 Having now completed the EDA for the `wc_matches` data, let's move onto to 
 the `wc_cups` data. 
 
 From this data, there are a three questions I'd like to answer:
 
-    1. Who has placed the best over all the world cups? Are there any surprise
-    countries that have cropped up throughout the years?
-    2. Does hosting the world cup give you a better chance of achieving a higher
-    placement?
-    3. How has the attendance grown as the popularity of the cup increased?
-      - Along similar vein, how has the number of teams and games grown?
+  1. Who has placed the best over all the world cups? Are there any surprise
+  countries that have cropped up throughout the years?
+  2. Does hosting the world cup give you a better chance of achieving a higher
+  placement?
+  3. How has the attendance grown as the popularity of the cup increased? 
+  Along similar vein, how has the number of teams and games grown?
     
 ### 1. Who has had the best overall placement in the world cup?
 To answer this question, we will need to group all the countries together by
@@ -536,10 +541,139 @@ placements <- full_join(
 # Rename all the columns
 placements <- rename(
   placements, 
+  team = winner.winner,
   first = winner.count, 
   second = second.count,
   third = third.count,
   fourth = fourth.count)
 
+# Set all NA values to 0
+placements[is.na(placements)] <- 0
+
+# Now let's tally the number of total placements for each team
+placements$total_placements <- rowSums(placements[,c("first", 
+                                                     "second", 
+                                                     "third", 
+                                                     "fourth")])
+
+# Organize the placements by WC wins
+placements <- arrange(placements, desc(first))
+
 placements
 ```
+It's crazy to think that all world cup wins are comprised from only nine teams!
+
+With the placements table generated, let's visualize the all total placements:
+```{r placements-graph}
+placements %>% 
+  ggplot() + 
+  aes(x = total_placements , y = reorder(team, +total_placements)) + 
+  geom_bar(
+    stat = 'identity',
+    color = 'gray',
+    fill = 'white') + 
+  scale_x_continuous(breaks = round(seq(min(placements$total_placements), 
+                                        max(placements$total_placements), 
+                                        by = 1),1)) +
+  labs(title = 'Brazil remains at the top!',
+       subtitle = 'Brazil has both the most WC wins (5) and placements (11)',
+       x='Total Placements',
+       y='Team')
+```
+
+So while there's no surprise that Brazil is at the top, there are a couple of 
+surprise teams (mainly those outside of South America and Europe) that 
+have achieved placements such as the Soviet Union, South Korea. 
+
+### 2. Does hosting the world cup give you a better chance of achieving a higher
+    placement?
+To answer this question, we'll have to take a look at the each of the hosts in 
+the `host` column and see if they are also present in any of the placement 
+columns (`winner`, `second`, `third`, `fourth`). 
+```{r host-placement}
+# Subset the data
+wc_cups_placements <- wc_cups[c("winner", "second", "third", "fourth")]
+
+# Create an empty list to house the results
+host_placements <- list()
+
+# Loop through and group by the different columns
+for (i in colnames(wc_cups_placements)) {
+  
+  host_placements[[i]] <- sum(wc_cups$host == wc_cups_placements[[i]])
+}
+
+# Print out the results
+cat('Host Winners:', host_placements[[1]],'\n',
+    'Host Runner-Ups:', host_placements[[2]],'\n',
+    'Host Third-Place:', host_placements[[3]],'\n',
+    'Host Fourth-Place:', host_placements[[4]])
+```
+
+So in 11 of 21 world cups played, the hosts have at least made it to at least
+fourth place! I also have to make a concession here, in 1974, the world cup was
+hosted in Germany, but West Germany won the world cup, so if we consider them
+equal, the number goes up to 12 of 21 or about 57% of the time. Seems like 
+being a pays off. 
+
+While this is not a part of the question, I am curious who has hosted the most
+world cups?
+```{r most-hosts}
+wc_cups %>%
+  group_by(host) %>%
+  summarize(hosted = n()) %>%
+  arrange(desc(hosted))
+```
+
+Brazil, France, Germany, Italy and my homeland of Mexico are all tied with 2 
+(but in 2026, Mexico will have technically hosted the most world cups - even 
+though it's a joint host with US and Canada😊)! 
+
+### 3. How has the attendance grown as the popularity of the cup increased? Along a
+similar vein, how has the number of teams and games grown?
+To answer this question, we'll look at the `attendance` and `teams` columns. 
+However, rather than looking at raw attendance, I want to look at the attendance
+per game to account for the increase of games over time.
+We can answer this question in a straightforward manner by using a line chart.
+```{r attendance-teams-over-time}
+
+wc_cups$attendance_per_game <- wc_cups$attendance / wc_cups$games
+
+plot_attendance_per_game <- wc_cups %>%
+  ggplot(aes(year)) + 
+  geom_line(aes(y = attendance_per_game)) + 
+  geom_point(aes(y = attendance_per_game)) + 
+  scale_x_continuous(breaks = round(seq(min(wc_cups$year), 
+                                        max(wc_cups$year), 
+                                        by = 8),1)) +
+  labs(
+    title = "1994 had the Best Crowds!",
+    x = "",
+    y = "Attendance Per Game"
+  )
+
+plot_teams_per_year <- wc_cups %>%
+  ggplot(aes(year)) + 
+  geom_line(aes(y = teams)) + 
+  geom_point(aes(y = teams)) + 
+  scale_x_continuous(breaks = round(seq(min(wc_cups$year), 
+                                        max(wc_cups$year), 
+                                        by = 8),1)) +
+  labs(
+    title = "World Cups Used to be Quite Exclusive",
+    subtitle = "From 13 to 32 teams in 88 years!",
+    x = "Year",
+    y = "Number of Teams"
+  )
+  
+plot_attendance_per_game / plot_teams_per_year
+```
+For reference the world cup in 1994 which had the highest attendance was the one
+in the US 🦅! 
+
+## Conclusion
+Having looked at both datasets and learned some fun facts, I'm going to wrap up
+this EDA. Again, these are meant to be practice notebooks where I test some of
+my R-skills and learn some new ones. While the depth of the analysis should not 
+be merely surface level, it's also not too intensive. I had a lot of fun going
+through this dataset and I'm excited for the next one!
