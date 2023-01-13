@@ -1,0 +1,183 @@
+---
+title: "Super Bowl Ads"
+output: 
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+# Background
+This notebook focuses on super bowl ads data! Again, this data is retrieved
+from the `tidy-tuesday` collection. 
+
+To give a general overview, this dataset was curated by the team at 
+[FiveThirtyEight](https://fivethirtyeight.com/). Per their [article](https://projects.fivethirtyeight.com/super-bowl-ads/) (which I will
+refrain from reading to have a true explanatory experience), they describe how
+they composed this dataset:
+
+> We watched 233 ads from the 10 brands that aired the most spots in all 
+21 Super Bowls this century, according to superbowl-ads.com.1 While we watched, 
+we evaluated ads using seven specific criteria, marking every spot as a "yes" 
+or "no" for each.
+
+For more information the dataset itself and
+the characteristics, feel free to check it out [here](https://github.com/rfordatascience/tidytuesday/blob/master/data/2021/2021-03-02/readme.md)
+
+---
+
+# Setup
+
+First, let's load the libraries and data:
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(tidytuesdayR) # library from which we'll retrieve the data
+library(patchwork)
+library(stringr)
+
+# Let's also set a theme for our plots
+theme_set(theme_minimal())
+```
+
+Now let's load the data from `tidy-tuesday` (March 2nd, 2021):
+```{r message=FALSE}
+super_bowl_ads <- tt_load('2021-03-02')
+super_bowl_ads <- super_bowl_ads$youtube
+```
+
+---
+
+# Exploratory Data Analysis (EDA)
+
+To begin, I like to just take a quick gander at the data to see what it looks
+like:
+```{r}
+head(super_bowl_ads)
+```
+
+Immediately, there are a couple of columns I'd like to drop that really won't be
+useful for analysis. Those columns are:
+
+  - `superbowl_ads_dot_com_url`
+  - `youtube_url`
+  - `etag`
+  - `thumbnail`
+
+I'm removing these columns since these columns are metadata that won't add any
+sort of value to our analyses.
+```{r}
+super_bowl_ads <- subset(
+  super_bowl_ads, 
+  select = -c(superbowl_ads_dot_com_url,
+              youtube_url,
+              etag,
+              thumbnail)
+  )
+```
+
+Having removed those columns, let's take a quick look to see if we have any 
+abnormalities like `NaN` values:
+```{r}
+sapply(super_bowl_ads, function(x) sum(is.na(x)))
+```
+
+We find that there are several missing values in the `kind` and `view_count`
+which will make analyzing those rows impossible. So let's look at those rows 
+and make sure that we can drop them.
+
+```{r}
+# Show the number of rows in the dataframe
+print(nrow(super_bowl_ads))
+
+# Let's just drop the columns which have either missing views, and like_counts
+# since those are the most important from an analysis point of views
+super_bowl_ads <- super_bowl_ads[!is.na(super_bowl_ads$view_count), ]
+super_bowl_ads <- super_bowl_ads[!is.na(super_bowl_ads$like_count), ]
+
+# Let's view the missing values again:
+sapply(super_bowl_ads, function(x) sum(is.na(x)))
+print(nrow(super_bowl_ads))
+```
+
+In total, we dropped about **22 observations**, which is not too many considering
+we started with 247 observations (less than 10%).
+
+With our data relatively clean (for analysis), let's formulate a list of 
+questions we can answer regarding this dataset:
+
+1. Are certain types of commercials associated with a specific type of brand?
+Are they consistent their type of commercial or does it change over time?
+2. What are the most popular commercials? We can determine this by the number 
+of views that a video received and furthermore, we can do some feature
+3. Does having more categories help or hurt a commercial? Tying in with question
+2, do the most popular commercials typically have two or more categories? Or are
+they more focused on one single category?
+engineering to determine which ads have been wildly popular, controversial, etc.
+4. How well does youtube's categorization match that of the FiveThirtyEight
+team? 
+
+Within each question, we will likely have further sub-questions, but for now, 
+let's get started 🏃🏽‍♂️!
+
+---
+
+### 1. Ad categories over time
+
+The categories that we're working with are:
+
+- `funny`
+- `show_product_quickly`
+- `patriotic`
+- `celebrity`
+- `danger`
+- `animals`
+- `use_sex`
+
+Some of these are more subjective than others (`funny`, `show_product_quickly`), 
+but we'll trust the team at FiveThirtyEight has a good sense of humor and is 
+relatively impatient 😉. 
+
+First, let's look at who our 10 brands are 
+```{r}
+unique(super_bowl_ads$brand)
+```
+
+We have:
+
+- 3 car brands
+- 5 food/beverage brands
+- 1 financial brand
+- 1 sports brand
+
+Before looking at the ad categories, how is the distribution of ads amongst the
+brands?
+```{r}
+super_bowl_ads %>%
+  group_by(brand) %>%
+  summarize(total_ads = n()) %>%
+  arrange(desc(total_ads))
+```
+
+We can already see that the number of ads are heavily skewed towards 
+our food/beverage brands. So when we look at the categories of each of the
+different ads, we should consider some sort of percentage to combat the 
+disparity in the number of ads between each brand.
+
+Let's go ahead and now create this grouping for our different categories:
+```{r}
+# Group the columns by each category
+group_category_by_brand <- super_bowl_ads %>%
+  group_by(brand) %>%
+  summarize(
+    count_funny = sum(funny),
+    count_show_product_quickly = sum(show_product_quickly),
+    count_patriotic = sum(patriotic), 
+    count_celebrity = sum(celebrity),
+    count_danger = sum(danger),
+    count_animals = sum(animals),
+    count_use_sex = sum(use_sex))
+
+# Sum the columns to get a total number of categories
+group_category_by_brand %>%
+    mutate(sum = rowSums(across(where(is.numeric)), na.rm=TRUE))
+```
+
