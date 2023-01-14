@@ -39,6 +39,7 @@ library(ggplot2)
 library(tidytuesdayR) # library from which we'll retrieve the data
 library(patchwork)
 library(stringr)
+library(reshape2)
 
 # Let's also set a theme for our plots
 theme_set(theme_minimal())
@@ -264,32 +265,139 @@ categories:
 group_category_by_brand <- super_bowl_ads %>%
   group_by(brand) %>%
   summarize(
-    count_funny = sum(funny),
-    count_show_product_quickly = sum(show_product_quickly),
-    count_patriotic = sum(patriotic), 
-    count_celebrity = sum(celebrity),
-    count_danger = sum(danger),
-    count_animals = sum(animals),
-    count_use_sex = sum(use_sex))
+    funny = sum(funny),
+    show_product_quickly = sum(show_product_quickly),
+    patriotic = sum(patriotic), 
+    celebrity = sum(celebrity),
+    danger = sum(danger),
+    animals = sum(animals),
+    use_sex = sum(use_sex))
 
-# Sum the columns to get a total number of categories
-group_category_by_brand %>%
-    mutate(sum = rowSums(across(where(is.numeric)), na.rm=TRUE))
+# Convert tible to dataframe
+group_category_by_brand <- as.data.frame(group_category_by_brand)
+
+group_category_by_brand
 ```
 
-    ## # A tibble: 10 × 9
-    ##    brand     count_funny count_s…¹ count…² count…³ count…⁴ count…⁵ count…⁶   sum
-    ##    <chr>           <int>     <int>   <int>   <int>   <int>   <int>   <int> <dbl>
-    ##  1 Bud Light          53        46       1      14      24      21      22   181
-    ##  2 Budweiser          18        25      14       5       7      19       7    95
-    ##  3 Coca-Cola           8        14       4       6       6      12       1    51
-    ##  4 Doritos            22        21       1       4      10      10       5    73
-    ##  5 E-Trade            11         7       2       0       3       4       3    30
-    ##  6 Hynudai            12        12       3       6       6       7       3    49
-    ##  7 Kia                 8         4       1       7       5       4       6    35
-    ##  8 NFL                 2         5       4       7       0       0       0    18
-    ##  9 Pepsi              17        14       3      15       6       3      11    69
-    ## 10 Toyota              5         9       2       2       3       3       1    25
-    ## # … with abbreviated variable names ¹​count_show_product_quickly,
-    ## #   ²​count_patriotic, ³​count_celebrity, ⁴​count_danger, ⁵​count_animals,
-    ## #   ⁶​count_use_sex
+    ##        brand funny show_product_quickly patriotic celebrity danger animals
+    ## 1  Bud Light    53                   46         1        14     24      21
+    ## 2  Budweiser    18                   25        14         5      7      19
+    ## 3  Coca-Cola     8                   14         4         6      6      12
+    ## 4    Doritos    22                   21         1         4     10      10
+    ## 5    E-Trade    11                    7         2         0      3       4
+    ## 6    Hynudai    12                   12         3         6      6       7
+    ## 7        Kia     8                    4         1         7      5       4
+    ## 8        NFL     2                    5         4         7      0       0
+    ## 9      Pepsi    17                   14         3        15      6       3
+    ## 10    Toyota     5                    9         2         2      3       3
+    ##    use_sex
+    ## 1       22
+    ## 2        7
+    ## 3        1
+    ## 4        5
+    ## 5        3
+    ## 6        3
+    ## 7        6
+    ## 8        0
+    ## 9       11
+    ## 10       1
+
+Having generated this table, let’s make a useful visualization out of it
+to extract greater meaning from it. However, to make said visualization,
+we’ll need to use the `melt` function from `reshape2` to make it usable:
+
+``` r
+# Melt all the values from the dataframe to create a new one
+melt_df <- melt(group_category_by_brand, id.vars = 1)
+
+# Generate a grouped barplot
+ggplot(
+  data = melt_df,
+  aes(x = value, y = reorder(brand, +value))) + 
+  geom_bar(
+    aes(fill = variable),
+    stat = "identity",
+    position = "stack") + 
+  scale_fill_brewer(palette="Spectral") + 
+  labs(
+    title = "Funny Bud Light Ads are in Abundance!",
+    x = "Number of Ads",
+    y = "Brand"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+
+This is quite a nice and informative graph. We can see that the majority
+of the ads are Bud Light ones and that they always tend to be funny and
+show their product quickly. Already from this graph, we can see that the
+majority of the ads are funny ones, but let’s look at the distribution
+of ads across the different groupings:
+
+``` r
+# Get the sums of each column
+sum_df <- as.data.frame(
+  as.list(
+    colSums(Filter(is.numeric, group_category_by_brand))
+  )
+)
+
+# Transpose the dataframe and make the index a new row called category
+sum_df <- t(sum_df)
+sum_df <- as.data.frame(cbind(category = rownames(sum_df), sum_df))
+colnames(sum_df)[2] ="count"
+sum_df$count = as.numeric(sum_df$count)
+
+# Create the bar plot
+sum_df %>%
+  ggplot() + 
+  aes(x = reorder(category, -count), y = count) + 
+  geom_bar(
+    stat = "identity",
+    color = 'gray',
+    fill = 'white') + 
+  labs(
+    title = "Show them Quick and Make them Funny!",
+    x = "Category",
+    y = "Number of Ads"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+Ads which are funny and show the product quickly are the most prominent
+types of ads amongst the biggest brands! From a general perspective,
+that is how super bowl ads are typically thought of.
+
+However, while those are all nice sets of graphs, we still don’t have a
+definitive answer to what types of ads do companies use. Let’s answer
+that with certainty now:
+
+``` r
+# Set up plotting space
+brand_names <- as.list(group_category_by_brand$brand)
+
+for (i in brand_names) { # Loop over loop.vector
+  
+  # Subset the dataframe
+  df_subset <- melt_df[melt_df$brand == i, ]
+
+  # store data in column.i as x
+  plot <- df_subset %>%
+    ggplot() + 
+    aes(x = reorder(brand, +value), y = value) + 
+    geom_bar(
+      aes(fill = variable),
+      stat = "identity",
+      position = "dodge"
+    ) + 
+    scale_fill_brewer(palette="Spectral") + 
+    labs(
+      x = "Brand",
+      y = "Number of Ads"
+    )
+  print(plot)
+}
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-2.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-3.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-4.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-5.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-6.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-7.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-8.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-9.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-10.png)<!-- -->
