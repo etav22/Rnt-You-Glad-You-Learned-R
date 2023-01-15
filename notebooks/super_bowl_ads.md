@@ -40,7 +40,7 @@ library(tidytuesdayR) # library from which we'll retrieve the data
 library(patchwork)
 library(stringr)
 library(reshape2)
-
+library(scales)
 # Let's also set a theme for our plots
 theme_set(theme_minimal())
 ```
@@ -178,11 +178,11 @@ With our data relatively clean (for analysis), let’s formulate a list of
 questions we can answer regarding this dataset:
 
 1.  Are certain types of commercials associated with a specific type of
-    brand? Are they consistent their type of commercial or does it
-    change over time?
+    brand? How has the type of commercials changed over time?
 2.  What are the most popular commercials? We can determine this by the
     number of views that a video received and furthermore, we can do
-    some feature
+    some feature engineering to further define other sorts of
+    superlatives (most controversial, likeable, etc.)
 3.  Does having more categories help or hurt a commercial? Tying in with
     question 2, do the most popular commercials typically have two or
     more categories? Or are they more focused on one single category?
@@ -354,8 +354,7 @@ sum_df %>%
   aes(x = reorder(category, -count), y = count) + 
   geom_bar(
     stat = "identity",
-    color = 'gray',
-    fill = 'white') + 
+    fill = '#3388bd') + 
   labs(
     title = "Show them Quick and Make them Funny!",
     x = "Category",
@@ -377,6 +376,9 @@ that with certainty now:
 # Set up plotting space
 brand_names <- as.list(group_category_by_brand$brand)
 
+# Generate a list to house the plot
+plots <- list()
+
 for (i in brand_names) { # Loop over loop.vector
   
   # Subset the dataframe
@@ -385,7 +387,7 @@ for (i in brand_names) { # Loop over loop.vector
   # store data in column.i as x
   plot <- df_subset %>%
     ggplot() + 
-    aes(x = reorder(brand, +value), y = value) + 
+    aes(x = brand, y = value) + 
     geom_bar(
       aes(fill = variable),
       stat = "identity",
@@ -396,8 +398,133 @@ for (i in brand_names) { # Loop over loop.vector
       x = "Brand",
       y = "Number of Ads"
     )
+  
+  # Return the plot objects
   print(plot)
 }
 ```
 
 ![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-2.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-3.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-4.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-5.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-6.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-7.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-8.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-9.png)<!-- -->![](super_bowl_ads_files/figure-gfm/unnamed-chunk-11-10.png)<!-- -->
+
+Here are the most interesting items I found from these plots
+
+1.  Budweiser has a large number of ads using animals which is not
+    common across the board. This makes sense as they have their famous
+    clydesdales’ commercials which have become a staple in the Super
+    Bowl lineup
+2.  The food/beverage companies show their products quickly and try to
+    do so comedically. The one notable point here is that Pepsi loves to
+    use celebrities in its commercials.
+3.  NFL stays away from commercials involving danger, sex, or animals -
+    for a professional organization, I’d say this checks out.
+4.  Surprisingly, a car brand, KIA, uses sex quite frequently in their
+    ads.
+
+As the final part of this subquestion, I want to look at how ads have
+changed over time. To do this, we’ll need to first group the ads by year
+and then reproduce our `melt` method from before to generate a plot:
+
+``` r
+# Group the columns by each category
+group_category_by_year <- super_bowl_ads %>%
+  group_by(year) %>%
+  summarize(
+    funny = sum(funny),
+    show_product_quickly = sum(show_product_quickly),
+    patriotic = sum(patriotic), 
+    celebrity = sum(celebrity),
+    danger = sum(danger),
+    animals = sum(animals),
+    use_sex = sum(use_sex))
+
+# Convert tible to dataframe
+group_category_by_year <- as.data.frame(group_category_by_year)
+
+# Melt all the values from the dataframe to create a new one
+melt_df_year <- melt(group_category_by_year, id.vars = 1)
+
+# Generate a grouped barplot
+ggplot(
+  data = melt_df_year,
+  aes(x = year, y = value))+ 
+  geom_bar(
+    aes(fill = variable),
+    stat = "identity",
+    position = "stack") + 
+  scale_fill_brewer(palette="Spectral") +
+  labs(
+    title = "No Discernable Pattern Across Time",
+    x = "Year",
+    y = "Number of Ads"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+As noted in the title of the graph, there doesn’t seem to be any
+discernable patterns for our top 10 brands. What I would say is more
+surprising is that we don’t see the number of ads they produce increase
+over time.
+
+------------------------------------------------------------------------
+
+### 2. Ad Superlatives
+
+The first ad superlative we can give is “most popular.” To determine
+which has been the most popular ad, we will simply look at which ad has
+the greatest number of views:
+
+``` r
+super_bowl_ads %>%
+  arrange(desc(view_count)) %>%
+  slice(1:10) %>%
+  ggplot() + 
+  aes(x = view_count, y = reorder(title, +view_count)) + 
+  scale_x_continuous(labels = label_number(suffix = " M", scale = 1e-6)) + 
+  geom_bar(
+    stat = "identity",
+    fill = '#3388bd') + 
+  labs(
+    x = "Number of Views",
+    y = "Video Title"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+Seems like we have a clear winner here: “Doritos Sling Baby” with a
+whopping 175 million views! The next highest ad is the Budweiser “Born
+the Hard Way” ad with only a fraction of the views. Such a disparity
+makes me wonder if this is the best way to determine “popularity” but we
+really aren’t offered any better metric to determine this. So we’ll take
+it for what it is and continue with some other superlatives.
+
+#### Most Liked and Disliked Super Bowl Commercials
+
+To determine this, I want to create four ratios:
+
+1.  Likes to Views Ratio
+2.  Dislikes to Views Ratios
+3.  Likes to Total Reactions (Likes + Dislikes)
+4.  Dislikes to Total Reactions (Likes + Dislikes)
+
+Let’s do it!
+
+``` r
+# 1 + 2: Likes/Dislikes to Views Ratios
+super_bowl_ads$ratio_likes_views <- super_bowl_ads$like_count / 
+  super_bowl_ads$view_count
+super_bowl_ads$ratio_dislikes_views <- super_bowl_ads$dislike_count / 
+  super_bowl_ads$view_count
+
+# 3 + 4: Likes/Dislikes to Total Reactions Ratios
+# First create the total reactions col
+super_bowl_ads$total_reactions <- super_bowl_ads$like_count + 
+  super_bowl_ads$dislike_count
+
+# Generate the other two ratios
+super_bowl_ads$ratio_likes_react <- super_bowl_ads$like_count / 
+  super_bowl_ads$total_reactions
+super_bowl_ads$ratio_dislikes_react <- super_bowl_ads$dislike_count /
+  super_bowl_ads$total_reactions
+```
