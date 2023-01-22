@@ -6,8 +6,14 @@ Super Bowl Ads
 - <a href="#exploratory-data-analysis-eda"
   id="toc-exploratory-data-analysis-eda">Exploratory Data Analysis
   (EDA)</a>
+- <a href="#ad-categories-over-time" id="toc-ad-categories-over-time">Ad
+  categories over time</a>
+- <a href="#2--ad-superlatives" id="toc-2--ad-superlatives">2 | Ad
+  Superlatives</a>
+- <a href="#3--categories-and-views" id="toc-3--categories-and-views">3 |
+  Categories and Views</a>
 
-# Background
+## Background
 
 This notebook focuses on super bowl ads data! Again, this data is
 retrieved from the `tidy-tuesday` collection.
@@ -29,7 +35,7 @@ free to check it out
 
 ------------------------------------------------------------------------
 
-# Setup
+## Setup
 
 First, let’s load the libraries and data:
 
@@ -60,7 +66,7 @@ super_bowl_ads <- super_bowl_ads$youtube
 
 ------------------------------------------------------------------------
 
-# Exploratory Data Analysis (EDA)
+## Exploratory Data Analysis (EDA)
 
 To begin, I like to just take a quick gander at the data to see what it
 looks like:
@@ -186,8 +192,6 @@ questions we can answer regarding this dataset:
 3.  Does having more categories help or hurt a commercial? Tying in with
     question 2, do the most popular commercials typically have two or
     more categories? Or are they more focused on one single category?
-    engineering to determine which ads have been wildly popular,
-    controversial, etc.
 4.  How well does youtube’s categorization match that of the
     FiveThirtyEight team?
 
@@ -196,7 +200,7 @@ now, let’s get started 🏃🏽‍♂️!
 
 ------------------------------------------------------------------------
 
-### 1. Ad categories over time
+## Ad categories over time
 
 The categories that we’re working with are:
 
@@ -468,7 +472,7 @@ over time.
 
 ------------------------------------------------------------------------
 
-### 2. Ad Superlatives
+## 2 \| Ad Superlatives
 
 The first ad superlative we can give is “most popular.” To determine
 which has been the most popular ad, we will simply look at which ad has
@@ -506,25 +510,171 @@ To determine this, I want to create four ratios:
 1.  Likes to Views Ratio
 2.  Dislikes to Views Ratios
 3.  Likes to Total Reactions (Likes + Dislikes)
-4.  Dislikes to Total Reactions (Likes + Dislikes)
+4.  Weighted Likes
+5.  Weighted Dislikes
+
+There are observations which have either no likes, no dislikes or no
+views. Since we cannot calculate the ratios for those commercials, we
+will exclude them from this portion of the analysis.
 
 Let’s do it!
 
 ``` r
-# 1 + 2: Likes/Dislikes to Views Ratios
-super_bowl_ads$ratio_likes_views <- super_bowl_ads$like_count / 
-  super_bowl_ads$view_count
-super_bowl_ads$ratio_dislikes_views <- super_bowl_ads$dislike_count / 
-  super_bowl_ads$view_count
+# Exclude any values that are zero
+super_bowl_like_dislike <- super_bowl_ads %>%
+  filter(like_count > 0, dislike_count > 0, view_count > 0)
 
-# 3 + 4: Likes/Dislikes to Total Reactions Ratios
-# First create the total reactions col
-super_bowl_ads$total_reactions <- super_bowl_ads$like_count + 
-  super_bowl_ads$dislike_count
+# Create the new features 
+super_bowl_like_dislike <- super_bowl_like_dislike %>%
+  mutate(
+    ratio_likes_views = like_count / view_count,
+    ratio_dislike_views = dislike_count / view_count,
+    total_reactions = like_count + dislike_count,
+    ratio_likes_react = like_count / total_reactions,
+    ratio_dislikes_react = 1 - ratio_likes_react,
+    weight = view_count / sum(view_count),
+    likes_weighted = ratio_likes_react * weight,
+    dislikes_weighted = ratio_dislikes_react * weight
+  )
 
-# Generate the other two ratios
-super_bowl_ads$ratio_likes_react <- super_bowl_ads$like_count / 
-  super_bowl_ads$total_reactions
-super_bowl_ads$ratio_dislikes_react <- super_bowl_ads$dislike_count /
-  super_bowl_ads$total_reactions
+# We can display the top 10 ads
+super_bowl_like_dislike %>%
+  arrange(desc(ratio_likes_react)) %>%
+  head(10) %>%
+  select(title, ratio_likes_react)
 ```
+
+    ## # A tibble: 10 × 2
+    ##    title                                                                 ratio…¹
+    ##    <chr>                                                                   <dbl>
+    ##  1 Frank the Monkey Bud Light                                              0.991
+    ##  2 'The Truth'   Official Kia Quoris Morpheus Big Game Commercial 2014     0.99 
+    ##  3 2013 Hyundai Santa Fe Big Game Ad : Team (Extended)                     0.990
+    ##  4 Toyota Camry 2012 Super Bowl Commercial shows Reinvented Possibiliti…   0.989
+    ##  5 Kia - Beige Socks (Christopher Walken) Super Bowl Commercial            0.989
+    ##  6 NSync - Budweiser Commercial                                            0.988
+    ##  7 Britney Spears - Pepsi Now and Then Commercial [HD Master]              0.988
+    ##  8 A Dream Car. For Real Life - 2012 Kia Optima Big Game Full Commercia…   0.988
+    ##  9 2018 Kia Commercial - Steven Tyler Big Game Ad - Feel Something Again   0.986
+    ## 10 Toyota Tacoma Double Cab Girlfriend Commercial                          0.986
+    ## # … with abbreviated variable name ¹​ratio_likes_react
+
+With this dataframe now setup, let’s go ahead and make some plots to see
+what our results are:
+
+``` r
+# Display the top 10 ratio ads based on raw ratio_likes_react:
+top_10_ratio_likes <- super_bowl_like_dislike %>%
+  arrange(desc(ratio_likes_react)) %>%
+  head(10) %>%
+  ggplot() + 
+  aes(y=reorder(title, +ratio_likes_react), x=ratio_likes_react) + 
+  geom_bar(stat="identity", fill = '#3388bd') + 
+  labs(
+    title = "Not Much Difference at the Top",
+    x = "Likes to Reactions Ratio",
+    y = "Ad Title"
+  )
+
+# display the top 10 ratio ads now using the weighted likes:
+top_10_ratio_likes_weighted <- super_bowl_like_dislike %>%
+  arrange(desc(likes_weighted)) %>%
+  head(10) %>%
+  ggplot() + 
+  aes(y=reorder(title, +likes_weighted), x=likes_weighted) + 
+  geom_bar(stat="identity", fill = '#3388bd') + 
+  labs(
+    title = "Doritos Sling Baby Unsurprisingly Top",
+    x = "Weighted Likes by Like Count",
+    y = "Ad Title"
+  )
+
+# Display the two graphs
+top_10_ratio_likes / top_10_ratio_likes_weighted
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+Looking by the raw likes to reactions ratio, we don’t have much of a
+difference. This is driven mainly by ads that have very few likes. This
+is evident because none of the top 10 ads in the top chart are found in
+the bottom chart which accounts for the number of likes for the ad.
+Speaking to the weighted ratio, it is of no surprise that **Doritos
+Sling Baby** is at the top due to the sheer number of views, which
+naturally, gives leads to more likes.
+
+To prove this final point, let’s quickly plot `view_count` versus
+`like_count`:
+
+``` r
+# This will make a full plot
+plot_outliers <- ggplot(super_bowl_ads, aes(x = view_count, y = like_count)) +
+  geom_point(color = '#3388bd') + 
+  labs(
+    title = "Unfiltered Results",
+    x = "Number of Views",
+    y = "Number of Likes"
+  ) 
+
+# Filter out outliers
+plot_no_outliers <- super_bowl_ads %>%
+  subset(view_count <= quantile(view_count, 0.95)) %>%
+  ggplot( aes(x = view_count, y = like_count)) +
+  geom_point(color = '#3388bd') + 
+  labs(
+    title = "95% Quantile Results",
+    x = "Number of Views",
+    y = "Number of Likes"
+  ) + 
+  theme(axis.title.y = element_blank())
+
+(plot_outliers | plot_no_outliers)
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+Now, let’s do a similar analysis but now with the dislikes:
+
+``` r
+# Display the top 10 ratio ads based on raw ratio_likes_react:
+top_10_ratio_dislikes <- super_bowl_like_dislike %>%
+  arrange(desc(ratio_dislikes_react)) %>%
+  head(10) %>%
+  ggplot() + 
+  aes(y=reorder(title, +ratio_dislikes_react), x=ratio_dislikes_react) + 
+  geom_bar(stat="identity", fill = '#3388bd') + 
+  labs(
+    title = "Ad Meter was not a Crowd Favorite",
+    x = "Dislikes to Reactions Ratio",
+    y = "Ad Title"
+  )
+
+# display the top 10 ratio ads now using the weighted likes:
+top_10_ratio_dislikes_weighted <- super_bowl_like_dislike %>%
+  arrange(desc(dislikes_weighted)) %>%
+  head(10) %>%
+  ggplot() + 
+  aes(y=reorder(title, +dislikes_weighted), x=dislikes_weighted) + 
+  geom_bar(stat="identity", fill = '#3388bd') + 
+  labs(
+    title = "Doritos Wins Loses the Battle, Budweiser, the War!",
+    x = "Weighted Likes by Like Count",
+    y = "Ad Title"
+  )
+
+# Display the two graphs
+top_10_ratio_dislikes / top_10_ratio_dislikes_weighted
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
+Here, we actually have a better view of the most disliked ad which is 🥁
+🥁 🥁
+
+**Budweiser 2017 Super Bowl Commercial \| “Born The Hard Way**
+
+While it’s raw dislikes ratio is not the highest, it is the only ad from
+the top graph which also shows in the bottom graph (in fact it places
+second in the weighted dislikes graph).
+
+## 3 \| Categories and Views
