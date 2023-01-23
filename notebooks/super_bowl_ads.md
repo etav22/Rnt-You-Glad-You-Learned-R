@@ -6,12 +6,13 @@ Super Bowl Ads
 - <a href="#exploratory-data-analysis-eda"
   id="toc-exploratory-data-analysis-eda">Exploratory Data Analysis
   (EDA)</a>
-- <a href="#ad-categories-over-time" id="toc-ad-categories-over-time">Ad
-  categories over time</a>
-- <a href="#2--ad-superlatives" id="toc-2--ad-superlatives">2 | Ad
-  Superlatives</a>
-- <a href="#3--categories-and-views" id="toc-3--categories-and-views">3 |
-  Categories and Views</a>
+  - <a href="#1-ad-categories-over-time"
+    id="toc-1-ad-categories-over-time">(1) Ad categories over time</a>
+  - <a href="#2--ad-superlatives" id="toc-2--ad-superlatives">(2) | Ad
+    Superlatives</a>
+  - <a href="#3--categories-and-views" id="toc-3--categories-and-views">(3)
+    | Categories and Views</a>
+- <a href="#conclusion" id="toc-conclusion">Conclusion</a>
 
 ## Background
 
@@ -192,15 +193,13 @@ questions we can answer regarding this dataset:
 3.  Does having more categories help or hurt a commercial? Tying in with
     question 2, do the most popular commercials typically have two or
     more categories? Or are they more focused on one single category?
-4.  How well does youtube’s categorization match that of the
-    FiveThirtyEight team?
 
 Within each question, we will likely have further sub-questions, but for
 now, let’s get started 🏃🏽‍♂️!
 
 ------------------------------------------------------------------------
 
-## Ad categories over time
+### (1) Ad categories over time
 
 The categories that we’re working with are:
 
@@ -472,7 +471,7 @@ over time.
 
 ------------------------------------------------------------------------
 
-## 2 \| Ad Superlatives
+### (2) \| Ad Superlatives
 
 The first ad superlative we can give is “most popular.” To determine
 which has been the most popular ad, we will simply look at which ad has
@@ -677,4 +676,93 @@ While it’s raw dislikes ratio is not the highest, it is the only ad from
 the top graph which also shows in the bottom graph (in fact it places
 second in the weighted dislikes graph).
 
-## 3 \| Categories and Views
+### (3) \| Categories and Views
+
+Here, we’re curious about the relationship between the number of
+categories an ad has and their popularity (which again, we can measure
+by the number of views an ad has).
+
+Let’s first create a new column to represent the number of categories an
+ad has and then look at the top 10 ads in terms of popularity.
+
+``` r
+# Create a column representing no. of ads:
+super_bowl_ads$count_categories <- rowSums(
+  super_bowl_ads[c("funny", "show_product_quickly", "patriotic", "celebrity", 
+                   "danger", "animals", "use_sex")]
+  )    
+
+# Now having created that column let's go ahead and visualize the top 10 
+# ads and their consequent category count:
+super_bowl_ads %>%
+  arrange(desc(view_count)) %>%
+  head(10) %>%
+  ggplot() +
+  aes(y = reorder(title, +view_count), x = count_categories) + 
+  geom_bar(
+    stat = "identity",
+    fill = '#3388bd'
+  ) + 
+  labs(
+    title = "Top 10 Ads Have at Least 2 categories",
+    x = "Number of Categories",
+    y = "Ad Title"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+``` r
+# Another way to visualize this would be by using a boxplot, however because I'm
+# going to only take 90% quantile to get a nicer view of the majority of the 
+# data
+super_bowl_ads %>%
+  filter(view_count <= quantile(view_count, 0.9)) %>%
+  ggplot(aes(x = factor(count_categories), y = view_count)) +
+  geom_boxplot(color = '#3388bd') + 
+  labs(
+    title = "No Real Advantage to Number of Categories",
+    x = "Number of Categories",
+    y = "Number of Views"
+  )
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-18-2.png)<!-- -->
+
+From these graphs, there’s really no conclusive statement that can be
+made about the number of categories an ad has. What we can say is that
+the top ads will have at least more than 1 category.
+
+Another way to look at this would be simply by the raw number of views
+each ad category has. We can do so with the following plot:
+
+``` r
+# Again, here I'm taking the 90% to deal with outliers
+super_bowl_ads %>%
+  filter(view_count <= quantile(view_count, 0.9)) %>%
+  group_by(count_categories) %>%
+  summarize(view_count = sum(view_count)) %>%
+  ggplot(aes(x = count_categories, y = view_count)) + 
+  geom_bar(stat = "identity", fill='3388bd') + 
+  scale_x_continuous(breaks = round(seq(min(super_bowl_ads$count_categories), 
+                                        max(super_bowl_ads$count_categories), 
+                                        by = 1),1))
+```
+
+![](super_bowl_ads_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+Follows a normal distribution, which I think is to be expected as most
+ads will definitely incorporate several elements, but not too few or too
+many so as to oversimplify or convolute the message.
+
+## Conclusion
+
+With that, I want to wrap up this notebook. Overall, I didn’t find the
+data to be too interesting since at the end of the day the exciting
+columns are quite subjective. Also, because this is already a subset of
+the “most popular” ads, we don’t have a holistic view of super bowl ads
+and their performance.
+
+Nevertheless, these notebooks are simply to further develop my R skills
+and I can definitely say I feel like I’ve achieved that purpose here.
+Looking forward to the next one :)
