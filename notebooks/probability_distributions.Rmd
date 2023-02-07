@@ -17,7 +17,7 @@ In this notebook, I'll take a look at the following distributions:
 
 1. [Bernoulli](#bernoulli-distribution)
 2. [Binomial](#binomial-distribution)
-3. Hyper-geometric
+3. [Hyper-geometric](#hyper-geometric-distribution)
 4. Geometric
 5. Poisson
 
@@ -134,7 +134,7 @@ bernoulli_large <- data.frame(
     heads_prob = heads_sum/toss
   )
 
-# Plot out the results:
+# Plot out the successes:
 ggplot(data = bernoulli_large) + 
   aes(x = toss, y = heads_prob) + 
   geom_line() + 
@@ -162,7 +162,118 @@ the probability of success. Furthermore, the $\binom{n}{x}$ is the combination
 which is calculated as:
 
 $$ \binom{n}{x} = \frac{n!}{x!(n-x)!}$$
+We use the combination here since we don't care about the order of the trials, 
+we're more focused on the outcomes. 
+
+All that being said, let's go ahead and do some plotting:
+```{r}
+# To maintain reproducibility we'll set a seed:
+set.seed(42)
+
+# list the number of samples:
+num_samples <- 150
+probability <- 0.5
+
+# Create a dataframe for the bernoulli:
+binomial <- data.frame(
+  samples = 1:num_samples,
+  successes = dbinom(x = 1:num_samples, size = num_samples, prob = probability)
+)
+
+# Plot the observations:
+ggplot(data = binomial) + 
+  aes(x = samples, y = successes) +
+  geom_point() + 
+  labs(
+    title = "A Symmetric Distribution!",
+    x = "Successes",
+    y = "Probability"
+  )
+
+```
+
+In this example, what we're displaying is the probability that $1 < x < 150$ for 
+150 observations, each with a probability of 0.5. Due to the number of samples 
+and the 50/50 probability, we achieve a nice, normal curve. However, what if the
+probability is not 50/50 or if we have much fewer trials?
+
+Let's investigate:
+```{r}
+small_samples <- 10
+skewed_probability <- 0.2
+
+# Add the skewed probability to the previous dataframe:
+binomial$successes_skewed = dbinom(
+      x = 1:num_samples, 
+      size = num_samples, 
+      prob = skewed_probability)
+
+# Create a new distribution for smaller number of samples:
+binomial_small <- data.frame(
+  samples = 1:small_samples,
+  successes = dbinom(
+    x = 1:small_samples, 
+    size = small_samples, 
+    prob = probability),
+  successes_skewed = dbinom(
+    x = 1:small_samples, 
+    size = small_samples, 
+    prob = skewed_probability)
+)
 
 
+# Plot the skewed distribution graph:
+skewed <- ggplot(data = binomial) + 
+  aes(x = samples, y = successes_skewed) +
+  geom_point() + 
+  labs(
+    title = "Probability 0.2",
+    x = "Successes",
+    y = "Probability"
+  )
+
+# Plot the small samples graph
+small_samples <- ggplot(data = binomial_small) + 
+  aes(x = samples, y = successes) +
+  geom_point() + 
+  labs(
+    title = "Sample Size 10",
+    x = "Successes",
+    y = "Probability"
+  )
+
+# Plot the skewed small graph
+small_skewed_samples <- ggplot(data = binomial_small) + 
+  aes(x = samples, y = successes_skewed) +
+  geom_point() + 
+  labs(
+    title = "Sample Size 10 with Probability 0.2",
+    x = "Successes",
+    y = "Probability"
+  )
+
+(skewed | small_samples) / small_skewed_samples
+```
+
+While with a skewed probability, we definitely observe the shift of the 
+distribution, we don't see much of a difference with the reduced sample size.
+Then we have the most chaotic scenario, we have a small sample size with a 
+skewed probability and we can see that this most definitely does not follow
+a normal distribution. 
+
+#### Hyper-Geometric Distribution
+
+Now, we've arrived at the hyper-geometric distribution, which is very similar to
+the Binomial distribution. However, the key difference here is that the 
+probability of each trial changes with each successive trial. An intuitive way
+of thinking about this is that we have sampling that is done *without replacement* 
+(whereas Bernoulli was done *with replacement*). 
+
+We can write the hyper-geometric distribution function as such:
+
+$$f(x) = \frac{\binom{X}{x}\binom{N-X}{n-x}}{\binom{N}{n}}$$
+where $N$ is the size of the population, $X$ is the number of successes we're 
+looking for in the population, $n$ is the number of draws, and $x$ is the number
+of observed successes. 
 
 
