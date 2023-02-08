@@ -1,11 +1,11 @@
 Probability Distributions
 ================
 
-- <a href="#background" id="toc-background">Background</a>
-  - <a href="#discrete-distributions"
-    id="toc-discrete-distributions">Discrete Distributions</a>
+- <a href="#intro" id="toc-intro">Intro</a>
+- <a href="#discrete-distributions"
+  id="toc-discrete-distributions">Discrete Distributions</a>
 
-## Background
+### Intro
 
 Recently, in the stats class that I’m taking, I’ve been exposed to
 several foundational distributions. These distributions are of great
@@ -18,7 +18,7 @@ In this notebook, I’ll take a look at the following distributions:
 
 1.  [Bernoulli](#bernoulli-distribution)
 2.  [Binomial](#binomial-distribution)
-3.  [Hyper-geometric](#hyper-geomtric-distribution)
+3.  [Hyper-geometric](#hyper-geometric-distribution)
 4.  Geometric
 5.  Poisson
 
@@ -279,3 +279,86 @@ size with a skewed probability and we can see that this most definitely
 does not follow a normal distribution.
 
 #### Hyper-Geometric Distribution
+
+Now, we’ve arrived at the hyper-geometric distribution, which is very
+similar to the Binomial distribution. However, the key difference here
+is that the probability of each trial changes with each successive
+trial. An intuitive way of thinking about this is that we have sampling
+that is done *without replacement* (whereas Bernoulli was done *with
+replacement*).
+
+We can write the hyper-geometric distribution function as such:
+
+$$f(x) = \frac{\binom{X}{x}\binom{N-X}{n-x}}{\binom{N}{n}}$$ where $N$
+is the size of the population, $X$ is the number of successes we’re
+looking for in the population, $n$ is the number of draws, and $x$ is
+the number of observed successes.
+
+All that being said, let’s go ahead and create hyper-geometric
+distribution:
+
+``` r
+# Set the arguments following the white/black ball urn example in documentation
+num_white_balls_drawn <- 20
+white_balls <- 20
+black_balls <- 20
+number_balls_drawn <- num_white_balls_drawn + 1
+
+# Create a dataframe for the hyper-geometric:
+hypergeo <- data.frame(
+  samples = 1:num_white_balls_drawn,
+  successes = dhyper(
+    x = 1:num_white_balls_drawn,
+    m = white_balls,
+    n = black_balls,
+    k = number_balls_drawn
+  )
+)
+
+# Plot the observations:
+ggplot(data = hypergeo) + 
+  aes(x = samples, y = successes) +
+  geom_point() + 
+  labs(
+    title = "Another Symmetric Distribution!",
+    x = "Successes",
+    y = "Probability"
+  )
+```
+
+![](probability_distributions_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+Again, we see another normal distribution. At least that’s the case when
+we have balanced classes. If we have unbalanced classes, we will begin
+to see a more skewed distribution:
+
+``` r
+# Set the arguments following the white/black ball urn example in documentation
+num_white_balls_drawn <- 20
+white_balls <- 20
+black_balls <- 50
+number_balls_drawn <- num_white_balls_drawn + 1
+
+# Create a dataframe for the hyper-geometric:
+hypergeo_skewed <- data.frame(
+  samples = 1:num_white_balls_drawn,
+  successes = dhyper(
+    x = 1:num_white_balls_drawn,
+    m = white_balls,
+    n = black_balls,
+    k = number_balls_drawn
+  )
+)
+
+# Plot the observations:
+ggplot(data = hypergeo_skewed) + 
+  aes(x = samples, y = successes) +
+  geom_point() + 
+  labs(
+    title = "20 White Balls to 50 Black Balls",
+    x = "Successes",
+    y = "Probability"
+  )
+```
+
+![](probability_distributions_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
